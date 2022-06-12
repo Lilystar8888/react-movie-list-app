@@ -113,7 +113,8 @@ import {
     
   const Movie = (props) => {
 
-    const [isAddedToWishlist, setIsAddedToWishlist] = useState(false);
+    const isWishList = props.item.isWishList=== "true"?true:false;
+    const [isAddedToWishlist, setIsAddedToWishlist] = useState(isWishList);
 
     const ToggleThisWishList = (index, status) => {
       setIsAddedToWishlist(!isAddedToWishlist);
