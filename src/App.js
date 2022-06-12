@@ -198,6 +198,9 @@ import {
     const [Loading, setLoading] = useState(true);
     const [Loaded, setLoaded] = useState(false);
     const [ErrorMsg, setErrorMsg] = useState("");
+
+    const localMovieList = localStorage.getItem('localMovieList') || [];
+    console.log('localMovieList', localMovieList);
     const [MovieList, setMovieList] = useState([]);
 
     const isMobile = useMediaQuery({
@@ -212,32 +215,36 @@ import {
     useEffect(() => {
       // Just run the first time
       console.log('render');
-      axios
-      .get(
-        "https://api.themoviedb.org/3/movie/popular?api_key=" +
-          api_key +
-          "&language=en-US&page=1"
-      )
-      .then(async(res) => {
-        console.log("res", res);
-        setLoading(false);
-        setErrorMsg("");
-        if (res.data) { 
-          //Add property
-          let results = res.data.results
-          results = results.map(obj => ({ ...obj, isWishList: "false"}));
-          await setMovieList(results);
-          setLoaded(true);
-        }
-      })
-      .catch((error) => {
-        setLoading(false);
-        if(error){
-          console.log("error", error);
-          setErrorMsg(error.message);
-          setLoaded(true);
-        }
-      });
+      console.log('useEffect=>MovieList', MovieList);
+      if(MovieList.length===0){
+        axios
+        .get(
+          "https://api.themoviedb.org/3/movie/popular?api_key=" +
+            api_key +
+            "&language=en-US&page=1"
+        )
+        .then(async(res) => {
+          console.log("res", res);
+          setLoading(false);
+          setErrorMsg("");
+          if (res.data) { 
+            //Add property
+            let results = res.data.results
+            results = results.map(obj => ({ ...obj, isWishList: "false"}));
+            localStorage.setItem('localMovieList', results);
+            await setMovieList(results);
+            setLoaded(true);
+          }
+        })
+        .catch((error) => {
+          setLoading(false);
+          if(error){
+            console.log("error", error);
+            setErrorMsg(error.message);
+            setLoaded(true);
+          }
+        });
+      }
     }, []);
 
     const ToggleWishList = (index, status) => { 
@@ -245,11 +252,11 @@ import {
       MovieList[index].isWishList = status;
     };
 
-    const move_list = MovieList
+    const move_list = MovieList.length>0?MovieList
     .map((item, index) => {
       return (
         <Movie 
-          key={index} 
+          key={item.id} 
           item={item} 
           index={index}
           isMobile={isMobile} 
@@ -258,14 +265,14 @@ import {
           ToggleWishList={ToggleWishList}
         />
       );
-    });
+    }):[];
 
-    const wish_list = MovieList
+    const wish_list = MovieList.length>0?MovieList
     .filter(item => item.isWishList=== "true")
     .map((item, index) => {
       return (
         <Movie 
-          key={index} 
+          key={item.id} 
           item={item} 
           index={index}
           isMobile={isMobile} 
@@ -274,7 +281,7 @@ import {
           ToggleWishList={ToggleWishList}
         />
       );
-    });
+    }):[];
 
     return (
       <Box bgColor="#f3f3f3" h="100vh">
