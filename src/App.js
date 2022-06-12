@@ -110,9 +110,7 @@ import {
         - Page will automatically scroll to top of the Popular Movies list or search result list after clicking the button
     - Refactor components
   */
-  
-  const api_key = "ba9e9eb1cba46fa2c366ab90f70a5dbe";
-  
+    
   const Movie = (props) => {
 
     const [isAddedToWishlist, setIsAddedToWishlist] = useState(false);
@@ -199,9 +197,9 @@ import {
     const [Loaded, setLoaded] = useState(false);
     const [ErrorMsg, setErrorMsg] = useState("");
 
-    const localMovieList = localStorage.getItem('localMovieList') || [];
-    console.log('localMovieList', localMovieList);
-    const [MovieList, setMovieList] = useState([]);
+    const LocalMovieList = JSON.parse(localStorage.getItem('LocalMovieList')) || [];
+    console.log('LocalMovieList', LocalMovieList);
+    const [MovieList, setMovieList] = useState(LocalMovieList);
 
     const isMobile = useMediaQuery({
       query: "(max-width: 995px)"
@@ -217,11 +215,9 @@ import {
       console.log('render');
       console.log('useEffect=>MovieList', MovieList);
       if(MovieList.length===0){
-        axios
-        .get(
-          "https://api.themoviedb.org/3/movie/popular?api_key=" +
-            api_key +
-            "&language=en-US&page=1"
+        const api_key = "ba9e9eb1cba46fa2c366ab90f70a5dbe";
+        axios.get(
+          "https://api.themoviedb.org/3/movie/popular?api_key=" + api_key + "&language=en-US&page=1"
         )
         .then(async(res) => {
           console.log("res", res);
@@ -231,7 +227,7 @@ import {
             //Add property
             let results = res.data.results
             results = results.map(obj => ({ ...obj, isWishList: "false"}));
-            localStorage.setItem('localMovieList', results);
+            localStorage.setItem('LocalMovieList', JSON.stringify(results));
             await setMovieList(results);
             setLoaded(true);
           }
