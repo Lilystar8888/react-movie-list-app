@@ -197,9 +197,7 @@ import {
     const [Loaded, setLoaded] = useState(false);
     const [ErrorMsg, setErrorMsg] = useState("");
 
-    const LocalMovieList = JSON.parse(localStorage.getItem('LocalMovieList')) || [];
-    console.log('LocalMovieList', LocalMovieList);
-    const [MovieList, setMovieList] = useState(LocalMovieList);
+    const [MovieList, setMovieList] = useState([]);
 
     const isMobile = useMediaQuery({
       query: "(max-width: 995px)"
@@ -213,8 +211,12 @@ import {
     useEffect(() => {
       // Just run the first time
       console.log('render');
-      console.log('useEffect=>MovieList', MovieList);
-      if(MovieList.length===0){
+
+      //get localStorage
+      const LocalMovieList = JSON.parse(localStorage.getItem('MovieList')) || [];
+      console.log('useEffect=>LocalMovieList', LocalMovieList);
+
+      if(LocalMovieList.length===0){
         const api_key = "ba9e9eb1cba46fa2c366ab90f70a5dbe";
         axios.get(
           "https://api.themoviedb.org/3/movie/popular?api_key=" + api_key + "&language=en-US&page=1"
@@ -224,11 +226,9 @@ import {
           setLoading(false);
           setErrorMsg("");
           if (res.data) { 
-            //Add property
-            let results = res.data.results
+            let results = res.data.results;
             results = results.map(obj => ({ ...obj, isWishList: "false"}));
-            localStorage.setItem('LocalMovieList', JSON.stringify(results));
-            await setMovieList(results);
+            localStorage.setItem('MovieList', JSON.stringify(results));
             setLoaded(true);
           }
         })
@@ -240,12 +240,18 @@ import {
             setLoaded(true);
           }
         });
+      }else{
+        setMovieList(LocalMovieList);
+        setLoading(false);
+        setLoaded(true);
+        setErrorMsg("");
       }
-    }, []);
+    }, [MovieList]);
 
     const ToggleWishList = (index, status) => { 
       console.log("ToggleWishList=>", index, status);
       MovieList[index].isWishList = status;
+      localStorage.setItem('MovieList', JSON.stringify(MovieList));
     };
 
     const move_list = MovieList.length>0?MovieList
@@ -329,52 +335,51 @@ import {
 
             {/* ----- Empty  UI ----- */}
             {Loaded && MovieList.length===0?(
-            <Center py="32px" color="pink.600" flexDirection="column">
-              <Box fontSize="x-large" mb="8px">
-                <RiInboxLine />
-              </Box>
-              No data.
-            </Center>
+              <Center py="32px" color="pink.600" flexDirection="column">
+                <Box fontSize="x-large" mb="8px">
+                  <RiInboxLine />
+                </Box>
+                No data.
+              </Center>
             ):(
-              null
+              <Box>
+                <Flex
+                  fontWeight="600"
+                  color="pink.600"
+                  mb="8px"
+                  align="center"
+                  gap="4px"
+                >
+                  <RiFireFill />
+                  Popular movies
+                </Flex>
+                <Flex
+                  w="full"
+                  minH="0"
+                  pb="32px"
+                  flex={1}
+                  direction={isMobile?"column":"row"} 
+                  wrap={isMobile?"nowrap":"wrap"}
+                  gap="11px"
+                >
+                  {move_list}
+                </Flex>
+
+                <Center>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    colorScheme="blackAlpha"
+                    onClick={onOpen}
+                    isLoading={false} // set true while loading data
+                    loadingText="Loading"
+                  >
+                    Load More
+                  </Button>
+                </Center>
+              </Box>
             )}
 
-            {/* ----- Movie List (Popular movies) ------ */}
-            <Flex
-              fontWeight="600"
-              color="pink.600"
-              mb="8px"
-              align="center"
-              gap="4px"
-            >
-              <RiFireFill />
-              Popular movies
-            </Flex>
-            <Flex
-              w="full"
-              minH="0"
-              pb="32px"
-              flex={1}
-              direction={isMobile?"column":"row"} 
-              wrap={isMobile?"nowrap":"wrap"}
-              gap="11px"
-            >
-              {move_list}
-            </Flex>
-
-            {/* ----- Load More Button UI (Bonus) ------ */}
-            <Center>
-              <Button
-                variant="ghost"
-                size="md"
-                colorScheme="blackAlpha"
-                onClick={onOpen}
-                isLoading={false} // set true while loading data
-                loadingText="Loading"
-              >
-                Load More
-              </Button>
-            </Center>
           </VStack>
   
           {/* ----- Search Result UI ------ */}
