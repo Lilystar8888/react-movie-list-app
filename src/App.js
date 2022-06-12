@@ -4,6 +4,7 @@ import {
     Flex,
     Heading,
     Stack,
+    VStack,
     Button,
     useDisclosure,
     Modal,
@@ -20,7 +21,7 @@ import {
     Spinner,
     Center
   } from "@chakra-ui/react";
-  import { useState } from "react";
+  import { useState, useEffect } from "react";
   import {
     RiAlertLine,
     RiArrowUpLine,
@@ -113,11 +114,18 @@ import {
   const api_key = "ba9e9eb1cba46fa2c366ab90f70a5dbe";
   
   const Movie = (props) => {
+
     const [isAddedToWishlist, setIsAddedToWishlist] = useState(false);
-  
+
+    const ToggleThisWishList = (index, status) => {
+      setIsAddedToWishlist(!isAddedToWishlist);
+      props.ToggleWishList(props.index, !isAddedToWishlist?"true":"false");
+    };
+
     return (
       <Flex 
-        w={props.isMobile?"full":"16%"} 
+        w={props.isMobile||props.WishListMode?"full":"16%"} 
+        align="center"
         bgColor="white" 
         borderRadius="md" 
         boxShadow="sm" 
@@ -125,8 +133,7 @@ import {
       >
         <Flex 
           pos="relative" 
-          flex={1} 
-          direction={props.isMobile?"row":"column"}
+          direction={props.isMobile||props.WishListMode?"row":"column"}
           w="full"
           borderWidth="1px" 
           borderRadius="lg" 
@@ -134,8 +141,10 @@ import {
         >
           <Box
             pos="relative" 
-            w={props.isMobile?"25%":"full"}
-            pt={props.isMobile?"0":"140%"}
+            w={props.isMobile||props.WishListMode?"25%":"full"}
+            minW={props.isMobile||props.WishListMode?"25%":"full"}
+            maxW={props.isMobile||props.WishListMode?"25%":"full"}
+            pt={props.isMobile||props.WishListMode?"0":"140%"}
             overflowY="hidden"
             background="#f3f3f3"
             backgroundImage="url('http://demo.lilystar.cc/others/dmovie/img/pic.png')"
@@ -168,15 +177,15 @@ import {
             </Box>
           </Box>
           <IconButton 
-            pos={props.isMobile?"absolute":"relative"}
-            right={props.isMobile?"0":"auto"}
+            pos={props.isMobile||props.WishListMode?"absolute":"relative"}
+            right={props.isMobile||props.WishListMode?"0":"auto"} 
             variant="ghost"
             colorScheme="pink"
             icon={isAddedToWishlist ? <RiHeartFill /> : <RiHeartLine />}
             aria-label="edit"
             _focus={{ outline: "none" }}
             isRound={props.isMobile}
-            onClick={() => setIsAddedToWishlist(!isAddedToWishlist)}
+            onClick={() => ToggleThisWishList()}
           />
         </Flex>
       </Flex>
@@ -184,8 +193,11 @@ import {
   };
   
   const App = () => {
-    const { isOpen, onOpen, onClose } = useDisclosure();
-  
+    
+    const {isOpen, onOpen, onClose} = useDisclosure();
+    const [Loading, setLoading] = useState(true);
+    const [Loaded, setLoaded] = useState(false);
+    const [ErrorMsg, setErrorMsg] = useState("");
     const [MovieList, setMovieList] = useState([]);
 
     const isMobile = useMediaQuery({
@@ -196,34 +208,74 @@ import {
       query: "(max-width: 1199px)"
     });
   
-    //Get Popular
-    axios
+    //Get Movie List
+    useEffect(() => {
+      // Just run the first time
+      console.log('render');
+      axios
       .get(
         "https://api.themoviedb.org/3/movie/popular?api_key=" +
           api_key +
           "&language=en-US&page=1"
       )
-      .then((res) => {
+      .then(async(res) => {
         console.log("res", res);
-        if (res.data) {
-          setMovieList(res.data.results);
+        setLoading(false);
+        setErrorMsg("");
+        if (res.data) { 
+          //Add property
+          let results = res.data.results
+          results = results.map(obj => ({ ...obj, isWishList: "false"}));
+          await setMovieList(results);
+          setLoaded(true);
         }
       })
       .catch((error) => {
-        console.log("error", error);
+        setLoading(false);
+        if(error){
+          console.log("error", error);
+          setErrorMsg(error.message);
+          setLoaded(true);
+        }
       });
-  
-    let move_list = MovieList.map((item, index) => {
+    }, []);
+
+    const ToggleWishList = (index, status) => { 
+      console.log("ToggleWishList=>", index, status);
+      MovieList[index].isWishList = status;
+    };
+
+    const move_list = MovieList
+    .map((item, index) => {
       return (
         <Movie 
           key={index} 
           item={item} 
+          index={index}
           isMobile={isMobile} 
-          isLabtop={isLabtop}      
+          isLabtop={isLabtop}    
+          WishListMode={false}  
+          ToggleWishList={ToggleWishList}
         />
       );
     });
-  
+
+    const wish_list = MovieList
+    .filter(item => item.isWishList=== "true")
+    .map((item, index) => {
+      return (
+        <Movie 
+          key={index} 
+          item={item} 
+          index={index}
+          isMobile={isMobile} 
+          isLabtop={isLabtop}    
+          WishListMode={true}  
+          ToggleWishList={ToggleWishList}
+        />
+      );
+    });
+
     return (
       <Box bgColor="#f3f3f3" h="100vh">
         <Flex w="full" h="full" px="32px" pt="64px" direction="column">
@@ -246,53 +298,69 @@ import {
             />
             <Input type="tel" placeholder="Search Movies" bg="white" />
           </InputGroup>
-  
-          {/* ----- Loading UI ----- */}
-          {/* <Center py="32px">
-            <Spinner color="pink.600" />
-          </Center> */}
-  
-          {/* ----- Error UI ----- */}
-          {/* <Center py="32px" color="pink.600" flexDirection="column">
-            <Box fontSize="x-large" mb="8px">
-              <RiAlertLine />
-            </Box>
-            <Box>Something went wrong.</Box>
-            <Box>Please try again.</Box>
-          </Center> */}
-  
-          {/* ----- Empty  UI ----- */}
-          {/* <Center py="32px" color="pink.600" flexDirection="column">
-            <Box fontSize="x-large" mb="8px">
-              <RiInboxLine />
-            </Box>
-            No data.
-          </Center> */}
-  
-          {/* ----- Movie List (Popular movies) ------ */}
-          <Flex
-            fontWeight="600"
-            color="pink.600"
-            mb="8px"
-            align="center"
-            gap="4px"
-          >
-            <RiFireFill />
-            Popular movies
-          </Flex>
-          <Flex
-            w="full"
-            minH="0"
-            pb="32px"
-            flex={1}
-            direction={isMobile?"column":"row"} 
-            wrap={isMobile?"nowrap":"wrap"}
-            gap="11px"
-          >
-            {move_list}
-  
+
+          <VStack>
+            
+            {/* ----- Loading UI ----- */}
+            {Loading?(
+              <Center py="32px">
+                <Spinner color="pink.600" />
+              </Center>
+            ):(
+              null
+            )}
+    
+            {/* ----- Error UI ----- */}
+            {ErrorMsg.length>0?(
+              <Center py="32px" color="pink.600" flexDirection="column">
+                <Box fontSize="x-large" mb="8px">
+                  <RiAlertLine />
+                </Box>
+                <Box>Something went wrong.</Box>
+                <Box>The root cause could be: {ErrorMsg}</Box>
+                <Box>Please try again later.</Box>
+              </Center>
+            ):(
+              null
+            )}
+
+            {/* ----- Empty  UI ----- */}
+            {Loaded && MovieList.length===0?(
+            <Center py="32px" color="pink.600" flexDirection="column">
+              <Box fontSize="x-large" mb="8px">
+                <RiInboxLine />
+              </Box>
+              No data.
+            </Center>
+            ):(
+              null
+            )}
+
+            {/* ----- Movie List (Popular movies) ------ */}
+            <Flex
+              fontWeight="600"
+              color="pink.600"
+              mb="8px"
+              align="center"
+              gap="4px"
+            >
+              <RiFireFill />
+              Popular movies
+            </Flex>
+            <Flex
+              w="full"
+              minH="0"
+              pb="32px"
+              flex={1}
+              direction={isMobile?"column":"row"} 
+              wrap={isMobile?"nowrap":"wrap"}
+              gap="11px"
+            >
+              {move_list}
+            </Flex>
+
             {/* ----- Load More Button UI (Bonus) ------ */}
-            {/* <Center>
+            <Center>
               <Button
                 variant="ghost"
                 size="md"
@@ -303,8 +371,8 @@ import {
               >
                 Load More
               </Button>
-            </Center> */}
-          </Flex>
+            </Center>
+          </VStack>
   
           {/* ----- Search Result UI ------ */}
           {/* <Flex
@@ -343,27 +411,28 @@ import {
             <ModalHeader>Wishlist</ModalHeader>
             <ModalCloseButton />
             <ModalBody p="32px">
-              {/* ----- Empty UI ----- */}
-              {/* <Center py="32px" color="pink.600" flexDirection="column">
-                <Box fontSize="x-large" mb="8px">
-                  <RiInboxLine />
-                </Box>
-                Find your favorite movies!
-                <Button
-                  mt="16px"
-                  size="md"
-                  variant="outline"
-                  colorScheme="blackAlpha"
-                  onClick={onClose}
-                >
-                  Close
-                </Button>
-              </Center> */}
-  
-              {/* ----- Movie List ------ */}
-              <Stack>
-                <Movie />
-              </Stack>
+
+              {wish_list.length===0?(
+                <Center py="32px" color="pink.600" flexDirection="column">
+                  <Box fontSize="x-large" mb="8px">
+                    <RiInboxLine />
+                  </Box>
+                  Find your favorite movies!
+                  <Button
+                    mt="16px"
+                    size="md"
+                    variant="outline"
+                    colorScheme="blackAlpha"
+                    onClick={onClose}
+                  >
+                    Close
+                  </Button>
+                </Center>
+              ):(
+                <Stack>
+                  {wish_list}
+                </Stack>
+              )}
             </ModalBody>
           </ModalContent>
         </Modal>
