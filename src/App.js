@@ -230,6 +230,7 @@ import {
             let results = res.data.results;
             results = results.map(obj => ({ ...obj, isWishList: "false"}));
             localStorage.setItem('MovieList', JSON.stringify(results));
+            setMovieList(results);
             setLoaded(true);
           }
         })
